@@ -14,14 +14,42 @@ jobs:
         with:
           channel: 'stable'
           architecture: x64
-      - run: flutter pub get
-      
 
+      # Get Flutter packages
+      - run: flutter pub get
+
+      # Ensure iOS folder exists
+      - run: flutter create --platforms=ios .
+
+      # Clean old pods/cache
+      - run: |
+          rm -rf ios/Pods
+          rm -rf ios/Podfile.lock
+
+      # Set minimum iOS deployment target to 14
+      - run: |
+          if ! grep -q "platform :ios, '14.0'" ios/Podfile; then
+            sed -i '' "s/platform :ios, .*/platform :ios, '14.0'/g" ios/Podfile || echo "platform :ios, '14.0'" >> ios/Podfile
+          fi
+          echo "post_install do |installer|
+          installer.pods_project.targets.each do |target|
+            target.build_configurations.each do |config|
+              config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+            end
+          end
+          end" >> ios/Podfile
+
+      # Update CocoaPods repo and install
       - run: pod repo update
         working-directory: ios
 
+      - run: pod install
+        working-directory: ios
+
+      # Build iOS release
       - run: flutter build ios --release --no-codesign
 
+      # Package IPA
       - run: mkdir Payload
         working-directory: build/ios/iphoneos
 
@@ -32,6 +60,7 @@ jobs:
         run: zip -qq -r -9 FlutterIpaExport.ipa Payload
         working-directory: build/ios/iphoneos
 
+      # Upload IPA to GitHub Release
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
