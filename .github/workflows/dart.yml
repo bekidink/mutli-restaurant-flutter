@@ -28,7 +28,7 @@ jobs:
           flutter clean
           flutter pub get
 
-      # Set minimum iOS deployment target to 14 safely
+      # Set minimum iOS deployment target to 14
       - name: Set iOS deployment target to 14
         run: |
           # Ensure platform is 14
