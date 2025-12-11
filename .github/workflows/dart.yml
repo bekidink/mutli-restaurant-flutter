@@ -25,19 +25,17 @@ jobs:
       - run: |
           rm -rf ios/Pods
           rm -rf ios/Podfile.lock
+          flutter clean
+          flutter pub get
 
-      # Set minimum iOS deployment target to 14
-      - run: |
-          if ! grep -q "platform :ios, '14.0'" ios/Podfile; then
-            sed -i '' "s/platform :ios, .*/platform :ios, '14.0'/g" ios/Podfile || echo "platform :ios, '14.0'" >> ios/Podfile
-          fi
-          echo "post_install do |installer|
-          installer.pods_project.targets.each do |target|
-            target.build_configurations.each do |config|
-              config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
-            end
-          end
-          end" >> ios/Podfile
+      # Set minimum iOS deployment target to 14 safely
+      - name: Set iOS deployment target to 14
+        run: |
+          # Ensure platform is 14
+          sed -i '' "s/platform :ios, .*/platform :ios, '14.0'/g" ios/Podfile || echo "platform :ios, '14.0'" >> ios/Podfile
+
+          # Inject deployment target into existing post_install
+          perl -0777 -i -pe "s/(post_install do \|installer\|.*?end)/\$1\ninstaller.pods_project.targets.each { |t| t.build_configurations.each { |c| c.build_settings['IPHONEOS_DEPLOYMENT_TARGET']='14.0' } }/s" ios/Podfile
 
       # Update CocoaPods repo and install
       - run: pod repo update
